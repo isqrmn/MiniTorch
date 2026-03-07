@@ -1,12 +1,5 @@
 #pragma once
 
-#include <cmath>
-#include <random>
-#include <fstream>
-#include <iostream>
-#include <variant>
-#include "CTensor.h"
-
 template<LLI T>
 class MiniTorch {
     // %% INNER CONSEXPR %%
@@ -1088,6 +1081,11 @@ public:
         const VEC_I &a_shape = t1->getShape();
         const VEC_I &b_shape = t2->getShape();
 
+        while (b_shape.size() < a_shape.size()) {
+            b_shape.insert(b_shape.begin(), 1);
+        }
+        SPTR<Tensor<T2>> temp_t2 = MiniTorch<T2>::ReShape(t2, b_shape);
+
         std::vector<bool> free_dims;
         for (int i = 0; i < a_shape.size(); i++) { free_dims.push_back(a_shape[i] == b_shape[i]); }
 
@@ -1106,7 +1104,7 @@ public:
             } // (a, b, c) -> if its free take "a" but if dim=1 is not free take "0" -> (1, b, c)
 
             const PTR_E &a_element = TakeObject<T>(t1, index);
-            const PTR_E &b_element = TakeObject<T2>(t2, free_index);
+            const PTR_E &b_element = TakeObject<T2>(temp_t2, free_index);
 
             out[i] = AddElement(a_element, b_element);
         }
@@ -2140,7 +2138,7 @@ public:
         return std::make_shared<Tensor<T>>(out);
     }
 
-    template<LLI T2=0, LLI T3>
+    template<LLI T2=0, LLI T3=1>
     static SPTR<Tensor<(T - T2) / T3>> Arange() requires(T >= T2 && (T - T2) % T3 == 0) {
         constexpr int start = T2;
         constexpr int end = T;

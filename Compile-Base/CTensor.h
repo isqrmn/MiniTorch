@@ -1,11 +1,5 @@
 #pragma once
 
-#include <array>
-#include <vector>
-#include <iostream>
-#include <stdexcept>
-#include "Element.h"
-
 template<LLI T>
 class Tensor {
     ARR<PTR_E, T> data = {};

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <memory>
-
 class Element {
     DTYPE data;
     DTYPE gradient;
