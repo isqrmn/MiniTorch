@@ -199,9 +199,10 @@ public:
             if (add) { elements.push_back(ref[n]->Copy()); ++add_index; }
         }
 
-        VEC_I vec(n_shape.begin(), n_shape.end());
+        auto t_out = std::make_shared<Tensor>(elements);
+        t_out = Minitorch::ReShape(t_out, n_shape);
 
-        return std::make_shared<Tensor>(elements, vec);
+        return t_out;
     }
 
     static PTR_E TakeObject(const PTR_T &t1, const VEC_I &indexes) {
@@ -1125,34 +1126,26 @@ public:
 
         //: (A, B, C,...)
         // Copy : (B, N) -> exp(Ni)/sum(exp(N)) -> (B, N)
+
         PTR_T tensor_copy = t1->Copy();
+        auto original_shape = tensor_copy->getShape();
 
-        VEC_I soShape;
-        if (tensor_copy->getShape().size() > 1) {
-            int minusOne = 1;
-            for (int i = 0; i < tensor_copy->getShape().size() - 1; i++) {
-                minusOne *= tensor_copy->getShape()[i];
-            }
+        const int D = original_shape[original_shape.size() - 1];
 
-            soShape.push_back(minusOne);
-            soShape.push_back(ref.size() / minusOne);
-        }
-        else {
-            soShape.push_back(1);
-            soShape.push_back(ref.size());
-        }
-
-        tensor_copy = ReShape(tensor_copy, soShape);
+        tensor_copy = ReShape(tensor_copy, {-1, D});
 
         VEC_E soft_vec;
-        for (int b = 0; b < tensor_copy->getShape()[0]; b++) {
+        for (int b = 0; b < tensor_copy->getShape()[0]; ++b) {
             VEC_I start{b, 0};
-            VEC_I end{b, tensor_copy->getShape()[1]-1};
+            VEC_I end{b, D - 1};
 
-            const VEC_E &sliced = TakeSlice(tensor_copy, start, end)->getData();
+            const PTR_T &sliced_t = TakeSlice(tensor_copy, start, end);
+            const VEC_E &sliced = sliced_t->getData();
 
             VEC_E exps = {};
-            for (int n = 0; n < t1->getShape()[1]; n++) { exps.push_back(Exp(sliced[n])); }
+            for (int n = 0; n < D; n++) {
+                exps.push_back(Exp(sliced[n]));
+            }
 
             PTR_E sum = std::make_shared<Element>(.0);
             for (const PTR_E& e : exps) { sum = AddElement(sum, e); }
@@ -1163,7 +1156,7 @@ public:
             }
         }
 
-        return std::make_shared<Tensor>(soft_vec, tensor_copy->getShape());
+        return std::make_shared<Tensor>(soft_vec, original_shape);
     }
 
     static PTR_T Sigmoid(const PTR_T &t1) {
@@ -1543,6 +1536,27 @@ public:
 
         return out_tensor;
     }
+    
+    static PTR_T Where(const PTR_T &mask, DTYPE condition, DTYPE one, DTYPE zero) {
+        VEC_E out;
+        for (int i = 0; i < mask->Numel(); i++) {
+            DTYPE temp_data = mask->getData()[i]->getData();
+
+            if (temp_data == condition) {
+                const PTR_E &temp = std::make_shared<Element>(one);
+                out.push_back(temp);
+            }
+            else {
+                const PTR_E &temp = std::make_shared<Element>(zero);
+                out.push_back(temp);
+            }
+        }
+
+        auto t_out = std::make_shared<Tensor>(out);
+        t_out = Minitorch::ReShape(t_out, mask->getShape());
+
+        return t_out;
+    }
 
     static PTR_T Where(const PTR_T &mask, DTYPE one, DTYPE zero) {
         const VEC_E &ref = mask->getData();
@@ -1765,6 +1779,21 @@ public:
         }
 
         return std::make_shared<Tensor>(out);
+    }
+
+    static PTR_T Arange(const int start, const int end, const int T3) {
+        VEC_E out;
+
+        for (int i = start; i < end; i += T3) {
+            out.push_back(std::make_shared<Element>(i));
+        }
+
+        VEC_I shape;
+        shape.reserve(1);
+
+        shape.push_back(out.size());
+
+        return std::make_shared<Tensor>(out, shape);
     }
 
     static PTR_T Arange(const int start, const int end){
