@@ -1,17 +1,15 @@
 #pragma once
 
-#include <memory>
-
 class Element {
     DTYPE data;
     DTYPE gradient;
     DTYPE im_data;
 
     PTR_E back_path_0 = nullptr;
-    DTYPE back_scalar_0;
+    DTYPE back_scalar_0 = 0;
 
     PTR_E back_path_1 = nullptr;
-    DTYPE back_scalar_1;
+    DTYPE back_scalar_1 = 0;
 
 public:
     [[nodiscard]] PTR_E Copy() const { return std::make_shared<Element>(std::make_shared<Element>(*this)); }

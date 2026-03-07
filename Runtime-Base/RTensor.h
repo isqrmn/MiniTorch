@@ -1,10 +1,5 @@
 #pragma once
 
-#include <vector>
-#include <iostream>
-#include <stdexcept>
-#include "Element.h"
-
 class Tensor {
     VEC_E data;
 

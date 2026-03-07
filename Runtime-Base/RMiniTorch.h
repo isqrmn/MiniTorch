@@ -1,11 +1,5 @@
 #pragma once
 
-#include <cmath>
-#include <random>
-#include <fstream>
-#include <iostream>
-#include "RTensor.h"
-
 class RMiniTorch {
     // %% UTILITY FUNCS %%
     static VEC_S SplitByChar(const String &data, const char special){
@@ -25,7 +19,7 @@ class RMiniTorch {
     static VEC_I CalcSliceShape(const VEC_I &start, const VEC_I &end) {
         VEC_I shape{};
 
-        for (std::size_t i = 0; i < 2; ++i)
+        for (std::size_t i = 0; i < start.size(); ++i)
             shape.push_back(end[i] - start[i] + 1);
 
         return shape;
@@ -154,32 +148,31 @@ public:
     RMiniTorch& operator=(RMiniTorch&&) = delete;
 
     // %% SET TENSORS %%
-    // static void ZeroStartData(const SPTR<Tensor<T>> &t1) {
-    //     const ARR<PTR_E, T> &ref = t1->getData();
-    //
-    //     for (int i = 0; i < T; ++i) {
-    //         auto temp_e = std::make_shared<Element>(.0);
-    //         t1->SetObject(i, temp_e);
-    //     }
-    // }
-    // template<LLI T2>
-    // static void PartialStartData(const SPTR<Tensor<T>> &t1, const SPTR<Tensor<T2>> &t2) {
-    //     const ARR<PTR_E, T> &ref = t1->getData();
-    //
-    //     for (int i = 0; i < T; ++i) {
-    //         t2->SetObject(i, ref[i]);
-    //     }
-    // }
-    //
-    // template<LLI T2>
-    // static void PartialIndexStartData(const SPTR<Tensor<T>> &t1, const SPTR<Tensor<T2>> &t2) {
-    //     const ARR<PTR_E, T> &ref = t1->getData();
-    //
-    //     for (int i = 0; i < T; ++i) {
-    //         auto ref_i = MiniTorch<T>::CreateIndex(t1, i);
-    //         t2->SetObject(ref_i, ref[i]);
-    //     }
-    // }
+    static void ZeroStartData(const PTR_T &t1) {
+        const auto &ref = t1->getData();
+
+        for (int i = 0; i < ref.size(); ++i) {
+            auto temp_e = std::make_shared<Element>(.0);
+            t1->SetObject(i, temp_e);
+        }
+    }
+
+    static void PartialStartData(const PTR_T &t1, const PTR_T &t2) {
+        const auto &ref = t1->getData();
+
+        for (int i = 0; i < ref.size(); ++i) {
+            t2->SetObject(i, ref[i]);
+        }
+    }
+
+    static void PartialIndexStartData(const PTR_T &t1, const PTR_T &t2) {
+        const auto &ref = t1->getData();
+
+        for (int i = 0; i < ref.size(); ++i) {
+            auto ref_i = Minitorch::CreateIndex(t1, i);
+            t2->SetObject(ref_i, ref[i]);
+        }
+    }
 
     // // %% TENSOR %%
     static PTR_T TakeSlice(const PTR_T &t1, const VEC_I &start, const VEC_I &end) {
@@ -479,6 +472,17 @@ public:
         return out;
     }
 
+    static PTR_E Sum(const PTR_T &t1, const int T2, const int offset) {
+        const auto &ref = t1->getData();
+
+        auto out = std::make_shared<Element>(.0);
+        for (int i = offset; i < T2 + offset; ++i) {
+            out = AddElement(out, ref[i]);
+        }
+
+        return out;
+    }
+    
     static PTR_E Sum(const PTR_T &t1) {
         const VEC_E &ref = t1->getData();
 
@@ -491,12 +495,41 @@ public:
         return out;
     }
 
+    static PTR_E Mean(const PTR_T &t1, const int T2, const int offset) {
+        auto out = Sum(t1, T2, offset);
+
+        out = Minitorch::MulElement(out, 1.0l / T2);
+
+        return out;
+    }
+    
     static PTR_E Mean(const PTR_T &t1) {
         const VEC_E &ref = t1->getData();
 
         auto out = Sum(t1);
 
         out = MulElement(out, 1.0l/ref.size());
+
+        return out;
+    }
+    
+    static PTR_E Var(const PTR_T &t1, const int T2, const int offset) {
+        const auto &ref = t1->getData();
+
+        const auto mean = Mean(t1, T2, offset);
+        const auto neg_mean = MulElement(mean, -1);
+
+        auto out = std::make_shared<Element>(.0);
+        for (int i = offset; i < T2 + offset; ++i) {
+            const PTR_E &temp = ref[i];
+            PTR_E copied = temp->Copy();
+
+            copied = Minitorch::AddElement(copied, neg_mean);
+            copied = Minitorch::Pow(copied, 2);
+
+            out = Minitorch::AddElement(out, copied);
+        }
+        out = Minitorch::MulElement(out, 1.0l/(T2 - 1));
 
         return out;
     }
@@ -515,13 +548,47 @@ public:
 
             out = AddElement(out, copied);
         }
-        out = MulElement(out, 1.0l/(ref.size()));
+        out = MulElement(out, 1.0l/ref.size());
 
         return out;
+    }
+    
+    static PTR_E Std(const PTR_T &t1, const int T2, const int offset) {
+        return Minitorch::Pow(Var(t1, T2, offset), 0.5);
     }
 
     static PTR_E Std(const PTR_T &t1) {
         return Pow(Var(t1), 0.5);
+    }
+    
+    static PTR_E RMS(const PTR_T &t1, const int T2, const int offset) {
+        const auto &ref = t1->getData();
+
+        auto out = std::make_shared<Element>(.0);
+        for (int i = offset; i < T2 + offset; ++i) {
+            auto copied = Minitorch::Pow(ref[i]->Copy(), 2);
+
+            out = Minitorch::AddElement(out, copied);
+        }
+        out = Minitorch::MulElement(out, 1.0l / T2);
+        out = Minitorch::Pow(out, 0.5);
+
+        return out;
+    }
+
+    static PTR_E RMS(const PTR_T &t1) {
+        const auto &ref = t1->getData();
+
+        auto out = std::make_shared<Element>(.0);
+        for (int i = 0; i < ref.size(); ++i) {
+            auto copied = Minitorch::Pow(ref[i]->Copy(), 2);
+
+            out = Minitorch::AddElement(out, copied);
+        }
+        out = Minitorch::MulElement(out, 1.0l / ref.size());
+        out = Minitorch::Pow(out, 0.5);
+
+        return out;
     }
 
     static VEC_I Argmax(const PTR_T &t1) {
@@ -600,10 +667,12 @@ public:
     }
 
     // %% ELEMEN OP. FUNCIONS %%
+    // t1.shape.size >= 4 && t2.shape.size >= 4
     static PTR_T MatMul(const PTR_T &t1, const PTR_T &t2) {
         // [c, a, m] x [c, m, b] -> [c, a,b]
         // [2, 3, 4] x [1, 4, 3] -> Calismali
         // [2, 3, 4] x [5, 4, 3] -> Hata
+        // artik 4lu
         const VEC_I &t1_shape = t1->getShape();
         const VEC_I &t2_shape = t2->getShape();
 
@@ -620,20 +689,22 @@ public:
         a_shape = temp_t1->getShape();
         b_shape = temp_t2->getShape();
 
-        VEC_I matted_shape = {a_shape[0], a_shape[1], b_shape[2]};
+        VEC_I matted_shape = {t1_shape[t1_shape.size() - 4], t1_shape[t1_shape.size() - 3], a_shape[1], b_shape[2]};
+
+        bool use_c = a_shape[0] == b_shape[0];
 
         // [1 2] [7 8] -> [n m]
         // [3 4] [5 6] -> [a b]
         VEC_E out;
-        for (int tdim = 0; tdim < matted_shape[0]; ++tdim){
+        for (int tdim = 0; tdim < a_shape[0]; ++tdim){
             const int mul_count = a_shape[a_shape.size() - 1];
 
-            for (int r = 0; r < matted_shape[1]; ++r) {
-                for (int c = 0; c < matted_shape[2]; ++c) {
+            for (int r = 0; r < a_shape[1]; ++r) {
+                for (int c = 0; c < b_shape[2]; ++c) {
                     PTR_E s = std::make_shared<Element>(.0);
 
                     for (int i = 0; i < mul_count; i++) {
-                        s = AddElement(s, MulElement(TakeObject(temp_t1, {tdim, r, i}), TakeObject(temp_t2, {tdim, i, c})));
+                        s = AddElement(s, MulElement(TakeObject(temp_t1, {tdim, r, i}), TakeObject(temp_t2, {use_c ? tdim : 0, i, c})));
                     }
 
                     out.push_back(s);
@@ -650,6 +721,44 @@ public:
         return t_out;
     }
 
+    static PTR_T FlexibleMul(const PTR_T &t1, const PTR_T &t2, const VEC_I start, const VEC_I end) {
+        // T1: (B, N, M) | T2: (B, 1, M) - (1, N, M) - (B, N, 1) - (B, 1, 1) - (1, N, 1) - (1, 1, 1) ALL VALID
+        VEC_E out;
+
+        int t2_counter = 0;
+        for (int i = 0; i < t1->getData().size(); ++i) {
+            t2_counter %= t2->getData().size();
+
+            VEC_I index = CreateIndex(t1, i); // -> (a, b, c)
+
+            bool skip = false;
+            for (int i2 = 0; i2 < index.size(); ++i2) {
+                if ((index[i2] > end[i2]) || (index[i2] < start[i2])) {
+                    skip = true;
+                    break;
+                }
+            }
+
+            if (skip) {
+                continue;
+            }
+
+            const PTR_E &a_element = TakeObject(t1, i);
+            const PTR_E &b_element = TakeObject(t2, t2_counter);
+
+            out.push_back(MulElement(a_element, b_element));
+
+            ++t2_counter;
+        }
+
+        VEC_I new_shape = t2->getShape();
+        new_shape[0] = -1;
+
+        auto t5 = std::make_shared<Tensor>(out);
+        t5 = Minitorch::ReShape(t5, new_shape);
+
+        return t5;
+    }
     static PTR_T FlexibleMul(const PTR_T &t1, const PTR_T &t2) {
         // 1: (B, N, M) | 2: (B, 1, M) - (1, N, M) - (B, N, 1) - (B, 1, 1) - (1, N, 1) - (1, 1, 1) ALL VALID
 
@@ -775,7 +884,12 @@ public:
         VEC_E out;
 
         const VEC_I &a_shape = big_tensor->getShape();
-        const VEC_I &b_shape = small_tensor->getShape();
+        VEC_I b_shape = small_tensor->getShape();
+
+        while (b_shape.size() < a_shape.size()) {
+            b_shape.insert(b_shape.begin(), 1);
+        }
+        small_tensor = ReShape(t2, b_shape);
 
         std::vector<bool> free_dims;
         for (int i = 0; i < a_shape.size(); i++) { free_dims.push_back(a_shape[i] == b_shape[i]); }
@@ -916,7 +1030,7 @@ public:
 
         const PTR_T &temp = std::make_shared<Tensor>();
         for (int i = 0; i < ref.size(); i++) {
-            temp->getData().push_back(Pow(temp->getData()[i], scalar));
+            temp->getData().push_back(Pow(ref[i], scalar));
         }
 
         temp->setShape(t1->getShape());
@@ -938,7 +1052,7 @@ public:
 
         const PTR_T &temp = std::make_shared<Tensor>();
         for (int i = 0; i < ref.size(); i++) {
-            temp->getData().push_back(Abs(temp->getData()[i]));
+            temp->getData().push_back(Abs(ref[i]));
         }
 
         temp->setShape(t1->getShape());
@@ -957,7 +1071,7 @@ public:
 
         const PTR_T &temp = std::make_shared<Tensor>();
         for (int i = 0; i < ref.size(); i++) {
-            temp->getData().push_back(Exp(temp->getData()[i]));
+            temp->getData().push_back(Exp(ref[i]));
         }
 
         temp->setShape(t1->getShape());
@@ -973,7 +1087,7 @@ public:
 
         const PTR_T &temp = std::make_shared<Tensor>();
         for (int i = 0; i < ref.size(); i++) {
-            temp->getData().push_back(Log(temp->getData()[i]));
+            temp->getData().push_back(Log(ref[i]));
         }
 
         temp->setShape(t1->getShape());
@@ -990,14 +1104,14 @@ public:
 
         const PTR_T &temp = std::make_shared<Tensor>();
         for (int i = 0; i < ref.size(); i++) {
-            temp->getData().push_back(Softplus(temp->getData()[i], beta, treshold));
+            temp->getData().push_back(Softplus(ref[i], 1));
         }
 
         temp->setShape(t1->getShape());
 
         return temp;
     }
-    static PTR_E Softplus(PTR_E &e1, const DTYPE beta, const DTYPE treshold=20) {
+    static PTR_E Softplus(PTR_E e1, const DTYPE beta, const DTYPE treshold=20) {
         if (e1->getData() >= treshold) {
             return e1;
         }
@@ -1057,7 +1171,7 @@ public:
 
         const PTR_T &temp = std::make_shared<Tensor>();
         for (int i = 0; i < ref.size(); i++) {
-            temp->getData().push_back(Sigmoid(temp->getData()[i]));
+            temp->getData().push_back(Sigmoid(ref[i]));
         }
 
         temp->setShape(t1->getShape());
@@ -1076,7 +1190,7 @@ public:
 
         const PTR_T &temp = std::make_shared<Tensor>();
         for (int i = 0; i < ref.size(); i++) {
-            temp->getData().push_back(ReLU(temp->getData()[i]));
+            temp->getData().push_back(ReLU(ref[i]));
         }
 
         temp->setShape(t1->getShape());
@@ -1095,7 +1209,7 @@ public:
 
         const PTR_T &temp = std::make_shared<Tensor>();
         for (int i = 0; i < ref.size(); i++) {
-            temp->getData().push_back(GeLU(temp->getData()[i]));
+            temp->getData().push_back(GeLU(ref[i]));
         }
 
         temp->setShape(t1->getShape());
@@ -1122,7 +1236,7 @@ public:
 
         const PTR_T &temp = std::make_shared<Tensor>();
         for (int i = 0; i < ref.size(); i++) {
-            temp->getData().push_back(SiLU(temp->getData()[i]));
+            temp->getData().push_back(SiLU(ref[i]));
         }
 
         temp->setShape(t1->getShape());
@@ -1140,7 +1254,7 @@ public:
 
         const PTR_T &temp = std::make_shared<Tensor>();
         for (int i = 0; i < ref.size(); i++) {
-            temp->getData().push_back(Tanh(temp->getData()[i]));
+            temp->getData().push_back(Tanh(ref[i]));
         }
 
         temp->setShape(t1->getShape());
@@ -1292,47 +1406,72 @@ public:
         return std::make_shared<Tensor>(data_vec, shape_vec, weights_vec, complex);
     }
 
-    // template<LLI B, LLI C, LLI H, LLI W, LLI P_h, LLI P_w>
-    // static SPTR<Tensor<B * C * (P_w + W) * (P_h + H)>> PadInput(SPTR<Tensor<T>> x) requires (P_w > 1 && P_h > 1) {
-    //     constexpr int leftSize = P_w / 2;
-    //     constexpr int upSize = P_h / 2;
-    //
-    //     constexpr int downSize = P_h - upSize;
-    //     constexpr int rightSize = P_w - leftSize;
-    //
-    //     constexpr int _upSize = upSize * B * C * (W + rightSize);
-    //     constexpr int _leftSize = leftSize * B * C * (H + P_h);
-    //
-    //     constexpr int _downSize = downSize * B * C * W;
-    //     constexpr int _rightSize = rightSize * B * C * (H + downSize);
-    //
-    //     auto down_pad = MiniTorch<downSize>::Zeros();
-    //     down_pad = MiniTorch<downSize>::ReShape(down_pad, {1, 1, downSize, 1}); // {1, 1, DOWNSIZE, 1}
-    //     auto repped_down_pad = MiniTorch<downSize>::template Repeat<downSize * B * C>(down_pad, {B, C, 1, 1});
-    //     auto full_down_pad = MiniTorch<downSize * B * C>::template Repeat<downSize * B * C * W>(repped_down_pad, {1, 1, 1, W}); // {B, C, DOWNSIZE, W}
-    //
-    //     auto right_pad = MiniTorch<rightSize>::Zeros();
-    //     right_pad = MiniTorch<rightSize>::ReShape(right_pad, {1, 1, 1, rightSize}); // {1, 1, 1, RIGHTSIZE}
-    //     auto repped_right_pad = MiniTorch<rightSize>::template Repeat<rightSize * B * C>(right_pad, {B, C, 1, 1});
-    //     auto full_right_pad = MiniTorch<rightSize * B * C>::template Repeat<rightSize * B * C * (H + downSize)>(repped_right_pad, {1, 1, (H + downSize), 1}); // {B, C, DOWNSIZE, W}
-    //
-    //     auto up_pad = MiniTorch<upSize>::Zeros();
-    //     up_pad = MiniTorch<upSize>::ReShape(up_pad, {1, 1, upSize, 1});
-    //     auto repped_up_pad = MiniTorch<upSize>::template Repeat<upSize * B * C>(up_pad, {B, C, 1, 1});
-    //     auto full_up_pad = MiniTorch<upSize * B * C>::template Repeat<upSize * B * C * (W + rightSize)>(repped_up_pad, {1, 1, 1, (W + rightSize)}); // {B, C, UPSIZE, W}
-    //
-    //     auto left_pad = MiniTorch<leftSize>::Zeros();
-    //     left_pad = MiniTorch<leftSize>::ReShape(left_pad, {1, 1, 1, leftSize});
-    //     auto repped_left_pad = MiniTorch<leftSize>::template Repeat<leftSize * B * C>(left_pad, {B, C, 1, 1});
-    //     auto full_left_pad = MiniTorch<leftSize * B * C>::template Repeat<leftSize * B * C * (H + P_h)>(repped_left_pad, {1, 1, H + P_h, 1}); // {B, C, H, RIGHTSIZE}
-    //
-    //     auto downed = MiniTorch<T>::template Concatenate<_downSize>(x, full_down_pad, 2);
-    //     auto righted = MiniTorch<T + _downSize>::template Concatenate<_rightSize>(downed, full_right_pad, 3);
-    //     auto upped = MiniTorch<_upSize>::template Concatenate<T + _downSize + _rightSize>(full_up_pad, righted, 2);
-    //     auto lefted = MiniTorch<_leftSize>::template Concatenate<T + _downSize + _rightSize + _upSize>(full_left_pad, upped, 3);
-    //
-    //     return lefted;
-    // }
+    static PTR_T PadInput(PTR_T x, const int P_w, const int P_h) {
+        const VEC_I &x_s = x->getShape();
+
+        const int B = x_s[0];
+        const int C = x_s[1];
+        const int H = x_s[2];
+        const int W = x_s[3];
+
+        int leftSize = P_w / 2;
+        int upSize = P_h / 2;
+
+        int downSize = P_h - upSize;
+        int rightSize = P_w - leftSize;
+
+        // int _upSize = upSize * B * C * (W + rightSize);
+        // int _leftSize = leftSize * B * C * (H + P_h);
+        // int _downSize = downSize * B * C * W;
+        // int _rightSize = rightSize * B * C * (H + downSize);
+
+        auto down_pad = Minitorch::Zeros(downSize);
+        down_pad = Minitorch::ReShape(down_pad, {1, 1, downSize, 1}); // {1, 1, DOWNSIZE, 1}
+        auto repped_down_pad = Minitorch::Repeat(down_pad, {B, C, 1, 1});
+        auto full_down_pad = Minitorch::Repeat(repped_down_pad, {1, 1, 1, W}); // {B, C, DOWNSIZE, W}
+
+        auto right_pad = Minitorch::Zeros(rightSize);
+        right_pad = Minitorch::ReShape(right_pad, {1, 1, 1, rightSize}); // {1, 1, 1, RIGHTSIZE}
+        auto repped_right_pad = Minitorch::Repeat(right_pad, {B, C, 1, 1});
+        auto full_right_pad = Minitorch::Repeat(repped_right_pad, {1, 1, (H + downSize), 1}); // {B, C, DOWNSIZE, W}
+
+        PTR_T full_left_pad = nullptr;
+        if (leftSize > 0) {
+            auto left_pad = Minitorch::Zeros(leftSize);
+            left_pad = Minitorch::ReShape(left_pad, {1, 1, 1, leftSize});
+            auto repped_left_pad = Minitorch::Repeat(left_pad, {B, C, 1, 1});
+            full_left_pad = Minitorch::Repeat(repped_left_pad, {1, 1, H + downSize, 1}); // {B, C, H, RIGHTSIZE}
+        }
+
+        PTR_T full_up_pad = nullptr;
+        if (upSize > 0) {
+            auto up_pad = Minitorch::Zeros(upSize);
+            up_pad = Minitorch::ReShape(up_pad, {1, 1, upSize, 1});
+            auto repped_up_pad = Minitorch::Repeat(up_pad, {B, C, 1, 1});
+            full_up_pad = Minitorch::Repeat(repped_up_pad, {1, 1, 1, (W + P_w)}); // {B, C, UPSIZE, W}
+        }
+
+        auto downed = Minitorch::Concatenate(x, full_down_pad, 2);
+        auto righted = Minitorch::Concatenate(downed, full_right_pad, 3);
+
+        PTR_T lefted = nullptr;
+        if (leftSize > 0) {
+            lefted = Minitorch::Concatenate(full_left_pad, righted, 3);
+        }
+        else {
+            lefted = righted;
+        }
+
+        PTR_T upped = nullptr;
+        if (upSize > 0) {
+            upped = Minitorch::Concatenate(full_up_pad, lefted, 2);
+        }
+        else {
+            upped = lefted;
+        }
+
+        return upped;
+    }
 
     static PTR_T Gather(const PTR_T &t1, const int dim, const PTR_T &indexes) {
         //A{3,5,5} - I{1,5,5}
