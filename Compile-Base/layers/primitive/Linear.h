@@ -3,7 +3,7 @@
 template<int T, int R, int F_IN, int F_OUT>
 requires (T == (R * F_IN))
 class Linear {
-    const bool bias = true;
+    bool bias;
 
     SPTR<Tensor<F_IN * F_OUT>> weights;
     SPTR<Tensor<F_OUT>> bias_weight;
@@ -17,7 +17,7 @@ class Linear {
         setWeights(weights);
 
         if (bias) {
-            SPTR<Tensor<F_OUT>> bias = MiniTorch<F_OUT>::HeUniformTensorInitialization(F_IN);
+            SPTR<Tensor<F_OUT>> bias = MiniTorch<F_OUT>::HeUniformTensorInitialization(F_OUT);
 
             const VEC_I b_shape{1, 1, F_OUT};
             bias = MiniTorch<F_OUT>::ReShape(bias, b_shape);
@@ -27,9 +27,7 @@ class Linear {
     }
 
 public:
-    explicit Linear(const bool bias): bias(bias) { Initialization();}
-
-    explicit Linear() { Initialization();}
+    explicit Linear(const bool bias = true): bias(bias) { Initialization();}
 
     SPTR<Tensor<F_IN * F_OUT>> getWeights(){ return weights; }
 
