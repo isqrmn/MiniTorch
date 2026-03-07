@@ -1,8 +1,7 @@
 #pragma once
 
-template<LLI T, LLI B, LLI C, LLI D>
 class RMSNorm {
-    SPTR<Tensor<D>> scale; // {C}
+    PTR_T scale; // {C}
 
     void Initialization(){
         auto scale = MiniTorch<D>::HeUniformTensorInitialization(D); // {D}
@@ -13,11 +12,11 @@ class RMSNorm {
 public:
     explicit RMSNorm(){ Initialization(); }
 
-    SPTR<Tensor<D>> getScale(){ return this->scale; }
+    PTR_T getScale(){ return this->scale; }
 
-    void setScale(const SPTR<Tensor<D>> &scale){ this->scale = scale; }
+    void setScale(const PTR_T &scale){ this->scale = scale; }
 
-    SPTR<Tensor<T>> forward(const SPTR<Tensor<T>> &x){
+    PTR_T forward(const PTR_T &x){
         // X : {B, C, H, W}
         const SPTR<Element> &epsilon = std::make_shared<Element>(.0001);
 
@@ -41,5 +40,5 @@ public:
         return out;
     }
 
-    SPTR<Tensor<T>> operator()(const SPTR<Tensor<T>> &x) { return forward(x); }
+    PTR_T operator()(const PTR_T &x) { return forward(x); }
 };
