@@ -1,6 +1,6 @@
 #pragma once
 
-class Adam : public OptimizerClass{
+class AdamW : public OptimizerClass{
     DTYPE one = 1e-0;
     DTYPE epsilon = 1e-6;
 
@@ -20,12 +20,10 @@ class Adam : public OptimizerClass{
     int t = 1;
 
 public:
-    explicit Adam(DTYPE lr=1e-3, DTYPE weight_decay=1e-6) : lr(lr), weight_decay(weight_decay) {}
+    explicit AdamW(DTYPE lr=1e-3, DTYPE weight_decay=1e-6) : lr(lr), weight_decay(weight_decay) {}
 
     DTYPE forward(PTR_E x) override {
-        DTYPE decay_gradient = weight_decay * x->getData();
-
-        DTYPE s_momentum_new_dir = std::pow(x->getGradient() + decay_gradient, 2) * this->momentum_alpha;
+        DTYPE s_momentum_new_dir = std::pow(x->getGradient(), 2) * this->momentum_alpha;
         DTYPE s_momentum_old_dir = this->second_momentum * this->momentum_alpha_2;
 
         DTYPE new_momentum_s = s_momentum_new_dir + s_momentum_old_dir;
@@ -33,7 +31,7 @@ public:
 
         DTYPE sqrt_momentum = std::sqrt(new_momentum_s + this->epsilon);
 
-        DTYPE f_momentum_new_dir = (x->getGradient() + decay_gradient) * this->momentum_beta;
+        DTYPE f_momentum_new_dir = (x->getGradient()) * this->momentum_beta;
         DTYPE f_momentum_old_dir = this->first_momentum * this->momentum_beta_2;
 
         DTYPE new_momentum_f = f_momentum_new_dir + f_momentum_old_dir;
@@ -49,7 +47,9 @@ public:
             ++t;
         }
 
-        return x->getData() - scaled_grad;
+        DTYPE real_decay = weight_decay * x->getData();
+
+        return x->getData() - scaled_grad - real_decay;
     }
 
     DTYPE operator()(PTR_E x) override { return forward(x); }

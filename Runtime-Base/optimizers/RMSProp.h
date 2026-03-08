@@ -1,8 +1,6 @@
 #pragma once
 #include <memory>
 
-#include "../../Runtime-Base/R_naming_cfg.h"
-
 class RMSProp: public OptimizerClass{
     DTYPE one = 1e-0;
     DTYPE epsilon = 1e-6;
