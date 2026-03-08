@@ -54,7 +54,7 @@ public:
         if (x->getParam()) {
             auto temp = x->Copy();
 
-            if (i >= opts.size()) {
+            if (i < opts.size()) {
                 const auto &selected_optim = opts[i];
                 x->setData(selected_optim->forward(temp));
             }
