@@ -1000,7 +1000,7 @@ public:
     }
 
     static PTR_E DivElement(const PTR_E &e1, const PTR_E &e2) {
-        return std::make_shared<Element>(e1->getData() / e2->getData(), e1, 1/e2->getData(), e2, (-e1->getData()/std::pow(e2->getData(), 2)));
+        return std::make_shared<Element>(e1->getData() / e2->getData(), e1, 1/e2->getData(), e2, -e1->getData()/std::pow(e2->getData(), 2));
     }
     static PTR_E DivElement(const PTR_E &e1, const DTYPE scalar) {
         return std::make_shared<Element>(e1->getData() / scalar, e1, 1/scalar);

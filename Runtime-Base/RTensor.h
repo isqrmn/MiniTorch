@@ -9,6 +9,14 @@ class Tensor {
     bool complex = false;
     bool ParameterTensor = false;
 
+    void InitializeTensor() {
+        if (ParameterTensor) {
+            for (const auto &e : data) {
+                e->setParam(true);
+            }
+        }
+    }
+
 public:
     PTR_T Copy() { return std::make_shared<Tensor>(*this); }
 
