@@ -21,6 +21,7 @@ public:
         if (shape.size() < 1) {
             setShape({T});
         }
+        UpdateIndexWeights();
     }
 
     explicit Tensor(const ARR<PTR_E, T> &data, const VEC_I &shape,

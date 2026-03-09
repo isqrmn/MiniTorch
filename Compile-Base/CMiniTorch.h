@@ -2285,7 +2285,7 @@ public:
             throw std::runtime_error("Bad F_IN!");
         }
         static std::mt19937 rng(std::random_device{}());
-        std::uniform_real_distribution<DTYPE> dist(-std::sqrt(6.0 / f_in), std::sqrt(6.0 / f_in));
+        std::uniform_real_distribution<DTYPE> dist(-std::sqrt(6.0 / f_in) * std::sqrt(2), std::sqrt(6.0 / f_in) * std::sqrt(2));
 
         ARR<PTR_E, T> elements;
         for (int i = 0; i < T; i++) {
