@@ -3,13 +3,13 @@
 class Tensor {
     VEC_E data;
 
-    VEC_I shape = {0};
-    VEC_I index_weights = {1};
+    VEC_I shape = {};
+    VEC_I index_weights = {};
 
     bool complex = false;
     bool ParameterTensor = false;
 
-    void InitializeTensor() {
+    void InitializeTensor() const {
         if (ParameterTensor) {
             for (const auto &e : data) {
                 e->setParam(true);
@@ -20,36 +20,21 @@ class Tensor {
 public:
     PTR_T Copy() { return std::make_shared<Tensor>(*this); }
 
-    explicit Tensor(const VEC_E &data, const VEC_I &shape,
-                    const VEC_I &index_weights, const bool complex,
-                    const bool ParameterTensor) : data(data), shape(shape), index_weights(index_weights),
+    explicit Tensor(const VEC_E &data, const VEC_I &shape ={},
+                    const VEC_I &index_weights={}, const bool complex=false,
+                    const bool ParameterTensor=false) : data(data), shape(shape), index_weights(index_weights),
                                                   complex(complex), ParameterTensor(ParameterTensor) {
-    }
+        if (shape.size() < 1) {
+            VEC_I size;
+            size.push_back(data.size());
 
-    explicit Tensor(const VEC_E &data, const VEC_I &shape,
-                    const VEC_I &index_weights, const bool complex) : data(data), shape(shape),
-        index_weights(index_weights), complex(complex) {
-    }
-
-    explicit Tensor(const VEC_E &data, const VEC_I &shape,
-                    const VEC_I &index_weights) : data(data), shape(shape), index_weights(index_weights),
-                                                             complex(false) {
+            setShape(size);
+        }
     }
 
     explicit Tensor(const VEC_E &data, const VEC_I &shape,
                     const bool complex, const bool ParameterTensor) : data(data), shape(shape), complex(complex),
                                                                       ParameterTensor(ParameterTensor) {
-        UpdateIndexWeights();
-    }
-
-    explicit Tensor(const VEC_E &data, VEC_I &&shape,
-                    const bool complex, const bool ParameterTensor) : data(data), shape(shape), complex(complex),
-                                                                      ParameterTensor(ParameterTensor) {
-        UpdateIndexWeights();
-    }
-
-    explicit Tensor(const VEC_E &data, VEC_I &&shape,
-                    const bool complex) : data(data), shape(shape), complex(complex) {
         UpdateIndexWeights();
     }
 
@@ -60,17 +45,14 @@ public:
 
     explicit Tensor(const VEC_E &data, const bool complex,
                     const bool ParameterTensor) : data(data), complex(complex),
-                                                  ParameterTensor(ParameterTensor), shape({data.size()}) { UpdateIndexWeights(); }
-
-    explicit Tensor(const VEC_E &data, VEC_I &&shape) : data(data),
-        shape(shape) { UpdateIndexWeights(); }
-
-    explicit Tensor(const VEC_E &data, const VEC_I &shape) : data(data), shape(shape) { UpdateIndexWeights(); }
+                                                  ParameterTensor(ParameterTensor), shape({data.size()}) {
+        UpdateIndexWeights();
+    }
 
     explicit Tensor(const VEC_E &data, const bool complex) : data(data),
-        complex(complex), shape({data.size()}) { UpdateIndexWeights(); }
-
-    explicit Tensor(const VEC_E &data) : data(data), shape({data.size()}) { UpdateIndexWeights(); }
+        complex(complex), shape({data.size()}) {
+        UpdateIndexWeights();
+    }
 
     explicit Tensor(const PTR_T &t1) : complex(t1->getComplex()),
                                                         ParameterTensor(t1->getParameterTensor()) {
@@ -92,15 +74,11 @@ public:
         setData(elements);
     }
 
-    explicit Tensor(const VEC_I &shape) : shape(shape) {
-        this->UpdateIndexWeights();
-    }
-
-    explicit Tensor(): data({}), shape({}) {}
-
     explicit Tensor(const Tensor &t1) = default;
 
     explicit Tensor(Tensor &&t1) = default;
+
+    explicit Tensor() = default;
 
     static VEC_E ToElement(const VEC_D &elements) {
         VEC_E elements_;
