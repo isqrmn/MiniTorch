@@ -1,11 +1,12 @@
 #pragma once
+#include <vector>
 
 template<LLI T>
 class Tensor {
     ARR<PTR_E, T> data = {};
 
-    VEC_I shape = {0};
-    VEC_I index_weights = {1};
+    VEC_I shape = {};
+    VEC_I index_weights = {};
 
     bool complex = false;
     bool ParameterTensor = false;
@@ -13,19 +14,13 @@ class Tensor {
 public:
     SPTR<Tensor<T>> Copy() { return std::make_shared<Tensor>(*this); }
 
-    explicit Tensor(const ARR<PTR_E, T> &data, const VEC_I &shape,
-                    const VEC_I &index_weights, const bool complex,
-                    const bool ParameterTensor) : data(data), shape(shape), index_weights(index_weights),
+    explicit Tensor(const ARR<PTR_E, T> &data, const VEC_I &shape={},
+                    const VEC_I &index_weights={}, const bool complex=false,
+                    const bool ParameterTensor=false) : data(data), shape(shape), index_weights(index_weights),
                                                   complex(complex), ParameterTensor(ParameterTensor) {
-    }
-
-    explicit Tensor(const ARR<PTR_E, T> &data, const VEC_I &shape,
-                    const VEC_I &index_weights, const bool complex) : data(data), shape(shape),
-        index_weights(index_weights), complex(complex) {
-    }
-
-    explicit Tensor(const ARR<PTR_E, T> &data, const VEC_I &shape,
-                    const VEC_I &index_weights) : data(data), shape(shape), index_weights(index_weights) {
+        if (shape.size() < 1) {
+            setShape({T});
+        }
     }
 
     explicit Tensor(const ARR<PTR_E, T> &data, const VEC_I &shape,
@@ -37,11 +32,6 @@ public:
     explicit Tensor(const ARR<PTR_E, T> &data, VEC_I &&shape,
                     const bool complex, const bool ParameterTensor) : data(data), shape(shape), complex(complex),
                                                                       ParameterTensor(ParameterTensor) {
-        this->UpdateIndexWeights();
-    }
-
-    explicit Tensor(const ARR<PTR_E, T> &data, VEC_I &&shape,
-                    const bool complex) : data(data), shape(shape), complex(complex) {
         this->UpdateIndexWeights();
     }
 
@@ -54,22 +44,8 @@ public:
                     const bool ParameterTensor) : data(data), shape({T}), complex(complex),
                                                   ParameterTensor(ParameterTensor) { this->UpdateIndexWeights(); }
 
-    explicit Tensor(const ARR<PTR_E, T> &data, VEC_I &&shape) : data(data),
-        shape(shape) { this->UpdateIndexWeights(); }
-
-    explicit Tensor(const ARR<PTR_E, T> &data, const VEC_I &shape) : data(data),
-        shape(shape) { this->UpdateIndexWeights(); }
-
     explicit Tensor(const ARR<PTR_E, T> &data, const bool complex) : data(data), shape({T}),
         complex(complex) { this->UpdateIndexWeights(); }
-
-    explicit Tensor(const ARR<PTR_E, T> &data) : data(data), shape({T}) {
-        this->UpdateIndexWeights();
-    }
-
-    explicit Tensor(const VEC_I &shape) : shape(shape) {
-        this->UpdateIndexWeights();
-    }
 
     explicit Tensor(const SPTR<Tensor<T>> &t) : complex(t->getComplex()),
                                                         ParameterTensor(t->getParameterTensor()) {
@@ -91,11 +67,11 @@ public:
         this->setData(elements);
     }
 
-    explicit Tensor(): shape({}), index_weights({}) {}
-
     explicit Tensor(const Tensor &t1) = default;
 
     explicit Tensor(Tensor &&t1) = default;
+
+    explicit Tensor() = default;
 
     static ARR<PTR_E, T> ToElement(const ARR<DTYPE, T> &elements) {
         ARR<PTR_E, T> elements_;

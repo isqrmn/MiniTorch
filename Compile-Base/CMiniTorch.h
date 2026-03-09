@@ -1079,7 +1079,7 @@ public:
         ARR<PTR_E, T> out;
 
         const VEC_I &a_shape = t1->getShape();
-        const VEC_I &b_shape = t2->getShape();
+        VEC_I b_shape = t2->getShape();
 
         while (b_shape.size() < a_shape.size()) {
             b_shape.insert(b_shape.begin(), 1);

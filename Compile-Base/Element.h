@@ -1,60 +1,76 @@
 #pragma once
 
 class Element {
-    DTYPE data;
-    DTYPE gradient;
-    DTYPE im_data;
+    DTYPE data = 0;
+    DTYPE gradient = 0;
+    DTYPE im_data = 0;
 
     PTR_E back_path_0 = nullptr;
-    DTYPE back_scalar_0;
+    DTYPE back_scalar_0 = 0;
 
     PTR_E back_path_1 = nullptr;
-    DTYPE back_scalar_1;
+    DTYPE back_scalar_1 = 0;
+
+    bool ParameterElement = false;
 
 public:
     [[nodiscard]] PTR_E Copy() const { return std::make_shared<Element>(std::make_shared<Element>(*this)); }
 
-    explicit Element(const DTYPE data, const DTYPE im_data, const DTYPE gradient, const PTR_E &back_path_0, const DTYPE back_scalar_0, const PTR_E &back_path_1, const DTYPE back_scalar_1):
-    data(data), gradient(gradient), im_data(im_data), back_path_0(back_path_0), back_scalar_0(back_scalar_0), back_path_1(back_path_1), back_scalar_1(back_scalar_1)
-    {}
+    explicit Element(const DTYPE data=.0, const DTYPE im_data=.0,
+        const DTYPE gradient=.0, const bool ParameterElement=false,
+        const PTR_E &back_path_0=nullptr, const DTYPE back_scalar_0=.0,
+        const PTR_E &back_path_1=nullptr, const DTYPE back_scalar_1=.0)
+    :
+        data(data), im_data(im_data),
+        gradient(gradient), ParameterElement(ParameterElement),
+        back_path_0(back_path_0), back_scalar_0(back_scalar_0),
+        back_path_1(back_path_1), back_scalar_1(back_scalar_1){}
 
-    explicit Element(const DTYPE data, const DTYPE im_data, const PTR_E &back_path_0, const DTYPE back_scalar_0, const PTR_E &back_path_1, const DTYPE back_scalar_1):
-    data(data), gradient(.0), im_data(im_data), back_path_0(back_path_0), back_scalar_0(back_scalar_0), back_path_1(back_path_1), back_scalar_1(back_scalar_1)
-    {}
+    explicit Element(const DTYPE data, const DTYPE im_data,
+        const PTR_E &back_path_0, const DTYPE back_scalar_0,
+        const PTR_E &back_path_1, const DTYPE back_scalar_1)
+    :
+        data(data), im_data(im_data),
+        back_path_0(back_path_0), back_scalar_0(back_scalar_0),
+        back_path_1(back_path_1), back_scalar_1(back_scalar_1){}
 
-    explicit Element(const DTYPE data, const PTR_E &back_path_0, const DTYPE back_scalar_0, const PTR_E &back_path_1, const DTYPE back_scalar_1):
-    data(data), gradient(.0), im_data(.0), back_path_0(back_path_0), back_scalar_0(back_scalar_0), back_path_1(back_path_1), back_scalar_1(back_scalar_1)
-    {}
+    explicit Element(const DTYPE data,
+        const PTR_E &back_path_0, const DTYPE back_scalar_0,
+        const PTR_E &back_path_1, const DTYPE back_scalar_1)
+    :
+        data(data),
+        back_path_0(back_path_0), back_scalar_0(back_scalar_0),
+        back_path_1(back_path_1), back_scalar_1(back_scalar_1){}
 
-    explicit Element(const DTYPE data, const DTYPE im_data, const DTYPE gradient, const PTR_E &back_path_0, const DTYPE back_scalar_0):
-    data(data), gradient(gradient), im_data(im_data), back_path_0(back_path_0), back_scalar_0(back_scalar_0), back_scalar_1(0)
-    {}
+    explicit Element(const DTYPE data, const DTYPE im_data,
+        const DTYPE gradient,
+        const PTR_E &back_path_0, const DTYPE back_scalar_0,
+        const bool ParameterElement=false)
+    :
+        data(data), im_data(im_data),
+        gradient(gradient), ParameterElement(ParameterElement),
+        back_path_0(back_path_0), back_scalar_0(back_scalar_0){}
 
-    explicit Element(const DTYPE data, const DTYPE im_data, const PTR_E &back_path_0, const DTYPE back_scalar_0):
-    data(data), gradient(.0), im_data(im_data), back_path_0(back_path_0), back_scalar_0(back_scalar_0), back_scalar_1(0)
-    {}
+    explicit Element(const DTYPE data, const DTYPE im_data,
+        const PTR_E &back_path_0, const DTYPE back_scalar_0)
+    :
+        data(data), im_data(im_data),
+        back_path_0(back_path_0), back_scalar_0(back_scalar_0){}
 
-    explicit Element(const DTYPE data, const PTR_E &back_path_0, const DTYPE back_scalar_0):
-    data(data), gradient(.0), im_data(.0), back_path_0(back_path_0), back_scalar_0(back_scalar_0), back_scalar_1(0)
-    {}
+    explicit Element(const DTYPE data,
+        const PTR_E &back_path_0, const DTYPE back_scalar_0)
+    :
+        data(data),
+        back_path_0(back_path_0), back_scalar_0(back_scalar_0){}
 
-    explicit Element(const DTYPE data, const DTYPE im_data, const DTYPE gradient):
-    data(data), gradient(gradient), im_data(im_data), back_scalar_0(0), back_scalar_1(0)
-    {}
+    explicit Element(const PTR_E &e)
+    :
+        data(e->getData()), im_data(e->getImData()),
+        gradient(e->getGradient()),ParameterElement(e->getParam()),
+        back_path_0(e->getBackPath0()), back_scalar_0(e->getBackScalar0()),
+        back_path_1(e->getBackPath1()), back_scalar_1(e->getBackScalar1()){}
 
-    explicit Element(const DTYPE data, const DTYPE im_data):
-    data(data), gradient(.0), im_data(im_data), back_scalar_0(0), back_scalar_1(0)
-    {}
-
-    explicit Element(const PTR_E &e):
-    data(e->getData()), gradient(e->getGradient()), im_data(e->getImData()), back_path_0(e->getBackPath0()), back_scalar_0(e->getBackScalar0()), back_path_1(e->getBackPath1()), back_scalar_1(e->getBackScalar1())
-    {}
-
-    explicit Element(const DTYPE data):
-    data(data), gradient(.0), im_data(.0), back_scalar_0(0), back_scalar_1(0)
-    {}
-
-    explicit Element() : data(.0), gradient(0), im_data(0), back_scalar_0(0), back_scalar_1(0) {}
+    explicit Element() = delete;
 
     [[nodiscard]] PTR_E getBackPath0() const { return back_path_0; }
 
@@ -65,6 +81,8 @@ public:
     [[nodiscard]] DTYPE getBackScalar1() const { return this->back_scalar_1; }
 
     [[nodiscard]] DTYPE getGradient() const { return this->gradient; }
+
+    [[nodiscard]] bool getParam() const { return this->ParameterElement; }
 
     [[nodiscard]] DTYPE getImData() const { return this->im_data; }
 
