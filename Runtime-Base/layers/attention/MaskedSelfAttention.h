@@ -23,23 +23,13 @@ public:
         mask = Minitorch::UnSqueeze(mask, 0);
         mask = Minitorch::UnSqueeze(mask, 0); // {1, 1, L, L}
 
-        matmul->PrintTensor();
-
         matmul = Minitorch::FlexibleMul(matmul, mask);
-
-        matmul->PrintTensor();
 
         mask = Minitorch::Where(mask, 0, -9999, 0);
 
-        mask->PrintTensor();
-
         matmul = Minitorch::FlexibleAdd(matmul, mask);
 
-        matmul->PrintTensor();
-
         matmul = softmax_(matmul); // -> {1, BC, L, L}
-
-        matmul->PrintTensor();
 
         auto out = Minitorch::MatMul(matmul, v); // -> {1, BC, L, D / nhead}
 
