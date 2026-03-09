@@ -677,6 +677,10 @@ public:
         const VEC_I &t1_shape = t1->getShape();
         const VEC_I &t2_shape = t2->getShape();
 
+        if (t1_shape.size() != 4 || t2_shape.size() != 4) {
+            throw std::runtime_error("Inputs Must Have 4 Dims!");
+        }
+
         if (t1_shape[t1_shape.size() - 1] != t2_shape[t2_shape.size() - 2]) {
             throw std::runtime_error("Bad Tensor Shapes!");
         }
@@ -714,10 +718,7 @@ public:
         }
 
         auto t_out = std::make_shared<Tensor>(out, matted_shape);
-
-        if (t1_shape.size() == 2) {
-            t_out = Squeeze(t_out, 0);
-        }
+        // t_out = Minitorch::ReShape(t_out, matted_shape);
 
         return t_out;
     }
@@ -798,7 +799,10 @@ public:
             out.push_back(MulElement(a_element, b_element));
         }
 
-        return std::make_shared<Tensor>(out, a_shape);
+        auto t5 = std::make_shared<Tensor>(out);
+        t5 = Minitorch::ReShape(t5, a_shape);
+
+        return t5;
     }
     static PTR_T FlexibleMul(const PTR_T &t1, const DTYPE b) {
         const VEC_E &ref = t1->getData();
@@ -1900,7 +1904,7 @@ public:
             throw std::runtime_error("Bad F_IN!");
         }
         static std::mt19937 rng(std::random_device{}());
-        std::uniform_real_distribution<DTYPE> dist(-std::sqrt(6.0 / f_in), std::sqrt(6.0 / f_in));
+        std::uniform_real_distribution<DTYPE> dist(-std::sqrt(6.0 / f_in) * std::sqrt(2), std::sqrt(6.0 / f_in) * std::sqrt(2));
 
         VEC_E elements;
         for (int i = 0; i < size; i++) {

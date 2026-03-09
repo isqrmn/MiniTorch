@@ -30,6 +30,7 @@ public:
 
             setShape(size);
         }
+        UpdateIndexWeights();
     }
 
     explicit Tensor(const VEC_E &data, const VEC_I &shape,
